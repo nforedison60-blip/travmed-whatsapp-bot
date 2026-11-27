@@ -1,0 +1,18 @@
+{
+  "name": "travmed-whatsapp-bot",
+  "version": "1.0.0",
+  "description": "WhatsApp chatbot for TravMed International: FAQs and booking intake via the WhatsApp Cloud API",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node test/flow.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.16"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}
