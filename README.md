@@ -97,6 +97,31 @@ Link to `https://wa.me/27XXXXXXXXX?text=Hi` (the number in international format,
 
 ---
 
+---
+
+## Option B: run through Twilio (no Meta app or business verification needed to start)
+
+The bot also works through **Twilio**. Messages are plain numbered text, exactly like TravMed's script, and customers reply with the number.
+
+**Render → Environment** variables for Twilio:
+
+| Key | Value |
+|---|---|
+| `PROVIDER` | `twilio` |
+| `PUBLIC_BASE_URL` | `https://travmed-whatsapp-bot1.onrender.com` |
+| `TWILIO_ACCOUNT_SID` | Twilio Console → Account Info → Account SID |
+| `TWILIO_AUTH_TOKEN` | Twilio Console → Account Info → Auth Token |
+| `TWILIO_WHATSAPP_FROM` | `+14155238886` for the sandbox; later, TravMed's own number, e.g. `+27729607935` |
+
+**Twilio Console:**
+1. Messaging → Try it out → **Send a WhatsApp message**. From your phone, send the `join <word>` code to **+1 415 523 8886** to join the sandbox.
+2. **Sandbox settings** → *When a message comes in*: `https://travmed-whatsapp-bot1.onrender.com/twilio`, method **POST** → Save.
+3. Send **Hi** to +1 415 523 8886. The welcome menu should come back.
+
+**Going live on TravMed's own number:** Twilio Console → Messaging → Senders → **WhatsApp senders** → add +27 72 960 7935. The number must be removed from the WhatsApp app first. Then change `TWILIO_WHATSAPP_FROM` to `+27729607935` and set the sender's webhook to the same `/twilio` URL.
+
+If Twilio messages arrive but the bot doesn't answer, and Render's logs show `[twilio] bad signature`, check that `PUBLIC_BASE_URL` exactly matches the URL set in Twilio. As a last resort, add `TWILIO_SKIP_SIGNATURE=true`.
+
 ## Running locally / tests
 
 ```

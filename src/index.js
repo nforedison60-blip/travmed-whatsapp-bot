@@ -2,9 +2,10 @@
 const http = require('node:http');
 const crypto = require('node:crypto');
 const { config, missingConfig } = require('./config');
-const wa = require('./whatsapp');
 const mailer = require('./mailer');
 const { createBot } = require('./bot');
+const twilio = require('./twilio');
+const wa = config.provider === 'twilio' ? twilio : require('./whatsapp');
 
 const bot = createBot({ wa, mailer, timeoutMin: config.sessionTimeoutMin });
 
@@ -103,14 +104,45 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Twilio incoming WhatsApp messages (form-encoded).
+  if (req.method === 'POST' && url.pathname === '/twilio') {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => {
+      const params = Object.fromEntries(new URLSearchParams(Buffer.concat(chunks).toString('utf8')));
+      const fullUrl = (config.publicBaseUrl || `https://${req.headers.host}`) + req.url;
+      if (!twilio.validSignature(fullUrl, params, req.headers['x-twilio-signature'])) {
+        console.warn('[twilio] bad signature for', fullUrl);
+        res.writeHead(403);
+        return res.end('Bad signature');
+      }
+      // Empty TwiML reply: the bot answers through the API instead.
+      res.writeHead(200, { 'Content-Type': 'text/xml' });
+      res.end('<Response></Response>');
+
+      const id = params.MessageSid;
+      if (!id || !params.From || alreadySeen(id)) return;
+      const msg = {
+        from: params.From.replace(/\D/g, ''), // "whatsapp:+27791234567" -> "27791234567"
+        id,
+        type: 'text',
+        text: params.Body || params.ButtonText || '',
+        replyId: params.ButtonPayload || null,
+      };
+      enqueue(msg.from, () => bot.handle(msg));
+    });
+    return;
+  }
+
   res.writeHead(404);
   res.end('Not found');
 });
 
 if (require.main === module) {
+  console.log(`[config] Provider: ${config.provider}`);
   const missing = missingConfig();
   if (missing.length) console.warn('[config] Missing env vars:', missing.join(', '));
-  if (!config.appSecret) console.warn('[config] META_APP_SECRET not set: webhook signatures are NOT verified.');
+  if (config.provider !== 'twilio' && !config.appSecret) console.warn('[config] META_APP_SECRET not set: webhook signatures are NOT verified.');
   if (!config.smtp.host) console.warn('[config] SMTP not set: leads will only be logged, not emailed.');
   server.listen(config.port, () => console.log(`TravMed bot listening on port ${config.port}`));
 }
